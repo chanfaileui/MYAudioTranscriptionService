@@ -10,8 +10,10 @@ import subprocess
 def convertFileFormat(filename):
     if not os.path.exists(filename):
         raise FileNotFoundError(f"Input file not found: {filename}")
-    
-    output_filename = filename[:-4] + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.wav'
+
+    output_filename = (
+        filename[:-4] + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.wav'
+    )
     cmd = [
         'ffmpeg',
         '-i',
@@ -25,7 +27,7 @@ def convertFileFormat(filename):
         'pcm_s16le',  # Raw PCM
         '-f',
         'wav',  # WAV container
-        output_filename
+        output_filename,
     ]
 
     result = subprocess.run(
@@ -34,16 +36,17 @@ def convertFileFormat(filename):
 
     if result.returncode != 0:
         raise Exception(f"FFmpeg failed: {result.stderr}")
-    
+
     if not os.path.exists(output_filename):
         raise Exception("Audio file was not created")
 
     return output_filename
 
+
 def transcriptService(filename):
     if not os.path.exists(filename):
         raise FileNotFoundError(f"Audio file not found: {filename}")
-    
+
     # For Mac, use CPU with int8 (as per official docs)
     if torch.cuda.is_available():
         device = "cuda"
@@ -76,16 +79,34 @@ def transcriptService(filename):
     for segment in output['segments']:
         print(segment['text'])
 
+    return output
+
+
+def saveTranscript(transcript_data, original_filename, format='txt'):
+    base_name = os.path.splitext(original_filename)[0]
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+
+    if format == 'txt':
+        output_file = f"{base_name}_transcript_{timestamp}.txt"
+
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for segment in transcript_data['segments']:
+                f.write(segment['text'] + '\n')
+
+    print(f"Transcript saved to: {output_file}")
+    return output_file
+
 
 if __name__ == "__main__":
     filename = "./examples/3331.mp4"
 
     try:
         wav_filename = convertFileFormat(filename)
-        transcriptService(wav_filename)
+        transcript = transcriptService(wav_filename)
+        saveTranscript(transcript, filename, format='txt')
     finally:
         # Clean up the temporary WAV file
         if 'wav_filename' in locals() and os.path.exists(wav_filename):
             os.remove(wav_filename)
-    
+
     print("Complete!")
