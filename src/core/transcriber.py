@@ -89,22 +89,3 @@ class WhisperXTranscriber:
             self.model = None
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-
-
-if __name__ == "__main__":
-    transcriber = WhisperXTranscriber(model_size="base")
-
-    def progress_update(progress):
-        print(f"Progress: {progress:.1%}")
-
-    try:
-        result = transcriber.transcribe_audio(
-            "examples/3331.mp4", progress_callback=progress_update
-        )
-
-        print(f"Transcription completed in {result.processing_time:.2f} seconds")
-        print(f"Word count: {result.word_count}")
-        print(f"Text preview: {result.text[:200]}...")
-
-    finally:
-        transcriber.cleanup()

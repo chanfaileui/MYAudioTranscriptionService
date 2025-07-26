@@ -1,8 +1,8 @@
-from src.core.audio_processor import convert_to_audio
-from src.core.transcriber import WhisperXTranscriber
-from src.core.file_manager import save_transcript, cleanup_temp_file
+from core.audio_processor import convert_to_audio
+from core.transcriber import WhisperXTranscriber
+from core.file_manager import save_transcript, cleanup_temp_file
 
-video_file = "./examples/3331.mp4"
+video_file = "../examples/3331.mp4"
 transcriber = WhisperXTranscriber(model_size="base")
 
 try:
