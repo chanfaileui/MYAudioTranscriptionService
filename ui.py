@@ -9,6 +9,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QFileDialog,
+    QComboBox,
+    QPushButton,
+    QHBoxLayout
 )
 
 
@@ -17,7 +20,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("MYTranscribeService")
-        self.setMinimumSize(500, 300)
+        self.setMinimumSize(330, 300)
 
         # Create main widget and layout
         main_widget = QWidget()
@@ -50,12 +53,54 @@ class MainWindow(QMainWindow):
         self.drop_area.mousePressEvent = self.browse_files
 
         layout.addWidget(self.drop_area)
+        
+        # Create horizontal layout for model and output controls
+        controls_layout = QHBoxLayout()
+        
+        # Model selection dropdown
+        model_label = QLabel("Model:")
+
+        self.model_combo = QComboBox()
+        self.model_combo.addItems(["Tiny", "Base", "Small", "Medium", "Large"])
+        self.model_combo.setCurrentText("Base")  # Default selection
+        
+        # Create a sub-layout for label + combo to keep them together
+        model_layout = QHBoxLayout()
+        model_layout.addWidget(model_label)
+        model_layout.addWidget(self.model_combo)
+        model_layout.setSpacing(5)
+
+        model_widget = QWidget()
+        model_widget.setLayout(model_layout)
+
+        # Output folder selection
+        self.output_button = QPushButton("Choose Output Folder")
+        # self.output_button.clicked.connect(self.choose_output_folder)
+
+        # Add to horizontal layout
+        controls_layout.addWidget(model_widget)
+        controls_layout.addStretch()
+        controls_layout.addWidget(self.output_button)
+        
+        # Add controls to main layout
+        layout.addLayout(controls_layout)
+        
+        # Create the big start button
+        self.start_button = QPushButton("Start Transcription")
+        # self.start_button.clicked.connect(self.start_transcription)
+       
+        layout.addWidget(self.start_button)
+
+        # Add stretch to push everything up
+        # layout.addStretch()
+        
+        # Store selected output folder
+        self.output_folder = None
 
         # Enable drag & drop on the whole window
         self.setAcceptDrops(True)
 
-        self.model_combo = QComboBox()
-        self.model_combo.addItems(["Tiny", "Base", "Small", "Medium", "Large"])
+
 
     def browse_files(self, event):
         desktop_dir = os.path.join(os.path.expanduser("~"), "Desktop")
