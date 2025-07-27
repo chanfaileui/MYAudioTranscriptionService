@@ -1,46 +1,45 @@
+import os
 import sys
-from random import choice
 
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog
 
-window_titles = [
-    "My App",
-    "My App",
-    "Still My App",
-    "Still My App",
-    "What on earth",
-    "What on earth",
-    "This is surprising",
-    "This is surprising",
-    "Something went wrong",
-]
 
+# Subclass QMainWindow to customize your application's main window
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.n_times_clicked = 0
+        self.setWindowTitle("MYTranscriptionService")
+        self.setAcceptDrops(True)
 
-        self.setWindowTitle("My App")
+        button = QPushButton("Click to browse filees")
+        self.setCentralWidget(button)
+        button.clicked.connect(self.button_clicked)
 
-        self.button = QPushButton("Press Me!")
-        self.button.clicked.connect(self.the_button_was_clicked)
+    def button_clicked(self):
+        desktop_dir = os.path.join(os.path.expanduser("~"), "Desktop")
+        fileName, filter_used = QFileDialog.getOpenFileName(
+            self, 
+            self.tr("Select Audio/Video File"), 
+            desktop_dir,
+            self.tr("Audio/Video Files (*.mp3 *.wav *.flac *.m4a *.ogg *.aac *.mp4 *.avi *.mov *.mkv *.webm)")
+        )
+        if fileName:
+            print(f"You selected: {fileName}")
+        else:
+            print("No file selected")
+    
+    def dragEnterEvent(self, event):  # Added 'self' parameter
+        if event.mimeData().hasUrls():  # Check if it's files being dropped
+            event.accept()  # Say "yes, I'll take this"
+        else:
+            event.ignore()  # Say "no thanks"
 
-        self.windowTitleChanged.connect(self.the_window_title_changed)
-
-        self.setCentralWidget(self.button)
-
-    def the_button_was_clicked(self):
-        print("Clicked.")
-        new_window_title = choice(window_titles)
-        print("Setting title:  %s" % new_window_title)
-        self.setWindowTitle(new_window_title)
-
-    def the_window_title_changed(self, window_title):
-        print("Window title changed: %s" % window_title)
-
-        if window_title == "Something went wrong":
-            self.button.setDisabled(True)
+    def dropEvent(self, event):  # Added 'self' parameter
+        files = [url.toLocalFile() for url in event.mimeData().urls()]
+        for file_path in files:
+            print(f"You dropped: {file_path}")
 
 app = QApplication(sys.argv)
 
