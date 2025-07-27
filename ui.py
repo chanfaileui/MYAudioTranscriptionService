@@ -1,7 +1,7 @@
 import os
 import sys
 
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QSize, Qt, QThread, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -15,6 +15,40 @@ from PySide6.QtWidgets import (
 )
 
 from transcriber import TranscriptionService
+
+
+class TranscriptionWorker(QThread):
+    # Signals to communicate back to main thread
+    progress_updated = Signal(str)  # For status messages
+    transcription_finished = Signal(dict)  # When done successfully
+    transcription_failed = Signal(str)  # When error occurs
+
+    def __init__(self, file_path, output_folder, model_size):
+        super().__init__()
+        self.file_path = file_path
+        self.output_folder = output_folder
+        self.model_size = model_size
+
+    def run(self):
+        # This method runs in the background thread
+        try:
+            self.progress_updated.emit("Starting transcription...")
+
+            service = TranscriptionService(model_size=self.model_size)
+
+            self.progress_updated.emit("Converting video to audio...")
+            result = service.transcribe_video(
+                video_path=self.file_path, output_dir=self.output_folder
+            )
+
+            self.progress_updated.emit("Transcription complete!")
+            self.transcription_finished.emit(result)
+
+        except Exception as e:
+            self.transcription_failed.emit(str(e))
+        finally:
+            if 'service' in locals():
+                service.cleanup()
 
 
 class MainWindow(QMainWindow):
@@ -221,31 +255,38 @@ class MainWindow(QMainWindow):
         print(f"   Model: {model}")
         print(f"   Output: {self.output_folder}")
 
-        service = TranscriptionService(model_size=f"{model}")
+        # Update UI for start
+        self.start_button.setText("Transcribing...")
+        self.start_button.setEnabled(False)
 
-        try:
-            self.start_button.setText("Transcribing...")
-            self.start_button.setEnabled(False)
+        # Create and start worker thread
+        self.worker = TranscriptionWorker(self.selected_file, self.output_folder, model)
 
-            result = service.transcribe_video(
-                video_path=self.selected_file, output_dir=self.output_folder
-            )
+        # Connect worker signals to methods
+        self.worker.progress_updated.connect(self.on_progress_update)
+        self.worker.transcription_finished.connect(self.on_transcription_done)
+        self.worker.transcription_failed.connect(self.on_transcription_error)
 
-            print(f"Done! Saved to {result['output_file']}")
-            print(
-                f"Processed {result['word_count']} words in {result['processing_time']:.2f} seconds"
-            )
+        # Start the background work
+        self.worker.start()
 
-            # Update UI
-            self.start_button.setText("Transcription Complete!")
+    def on_progress_update(self, message):
+        print(f"Progress: {message}")
 
-        except Exception as e:
-            print(f"Error: {e}")
-            self.start_button.setText("Error - Try Again")
+    def on_transcription_done(self, result):
+        print(f"Done! Saved to {result['output_file']}")
+        print(
+            f"Processed {result['word_count']} words in {result['processing_time']:.2f} seconds"
+        )
 
-        finally:
-            service.cleanup()
-            self.start_button.setEnabled(True)
+        self.start_button.setText("Transcription Complete!")
+        self.start_button.setEnabled(True)
+
+    def on_transcription_error(self, error_message):
+        print(f"Error: {error_message}")
+
+        self.start_button.setText("Error - Try Again")
+        self.start_button.setEnabled(True)
 
 
 app = QApplication(sys.argv)
