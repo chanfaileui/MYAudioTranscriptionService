@@ -31,7 +31,7 @@ class TranscriptionService:
             self.compute_type = "float16"
         else:
             self.device = "cpu"
-            self.compute_type = "int8" # recommended for MacOS
+            self.compute_type = "int8"  # recommended for MacOS
 
         print(f"Using device: {self.device} with compute_type: {self.compute_type}")
 
@@ -109,7 +109,7 @@ class TranscriptionService:
         return output_file
 
     def transcribe_video(
-        self, video_path: str, output_dir: str = "transcripts"
+        self, video_path: str, output_dir: str = "transcripts", progress_callback=None
     ) -> Dict[str, any]:
         """
         Complete transcription pipeline: video -> audio -> transcript -> save
@@ -125,27 +125,43 @@ class TranscriptionService:
 
         try:
             # Convert video to audio
+            if progress_callback:
+                progress_callback("Converting video to audio...", 10)
             temp_audio_path = self._convert_to_audio(video_path)
 
             # Load model if needed
+            if progress_callback:
+                progress_callback("Loading transcription model...", 30)
             if not self.model:
                 self._load_model()
 
             # Load and transcribe audio
+            if progress_callback:
+                progress_callback("Loading audio file...", 50)
             audio = whisperx.load_audio(temp_audio_path)
+
+            if progress_callback:
+                progress_callback("Transcribing speech to text...", 60)
             start_time = time.time()
             result = self.model.transcribe(audio, batch_size=16)
             processing_time = time.time() - start_time
 
             # Calculate word count
+            if progress_callback:
+                progress_callback("Processing results...", 90)
             word_count = sum(
                 len(segment['text'].split()) for segment in result['segments']
             )
 
             # Save transcript
+            if progress_callback:
+                progress_callback("Saving transcript file...", 95)
             output_file = self._save_transcript(
                 result['segments'], video_path, output_dir
             )
+
+            if progress_callback:
+                progress_callback("Transcription completed successfully!", 100)
 
             return {
                 'segments': result['segments'],

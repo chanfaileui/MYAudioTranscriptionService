@@ -32,16 +32,18 @@ class TranscriptionWorker(QThread):
     def run(self):
         # This method runs in the background thread
         try:
-            self.progress_updated.emit("Starting transcription...")
+
+            def progress_callback(message, percent):
+                self.progress_updated.emit(f"{percent}% - {message}")
 
             service = TranscriptionService(model_size=self.model_size)
 
-            self.progress_updated.emit("Converting video to audio...")
             result = service.transcribe_video(
-                video_path=self.file_path, output_dir=self.output_folder
+                video_path=self.file_path,
+                output_dir=self.output_folder,
+                progress_callback=progress_callback,
             )
 
-            self.progress_updated.emit("Transcription complete!")
             self.transcription_finished.emit(result)
 
         except Exception as e:
@@ -271,7 +273,7 @@ class MainWindow(QMainWindow):
         self.worker.start()
 
     def on_progress_update(self, message):
-        print(f"Progress: {message}")
+        print(f"{message}")
 
     def on_transcription_done(self, result):
         print(f"Done! Saved to {result['output_file']}")
