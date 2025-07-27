@@ -14,6 +14,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
 )
 
+from transcriber import TranscriptionService
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -212,12 +214,38 @@ class MainWindow(QMainWindow):
             print("Please choose an output folder first.")
             return
 
-        model = self.model_combo.currentText()
+        model = self.model_combo.currentText().lower()
 
         print(f"Starting transcription...")
         print(f"   File: {self.selected_file}")
         print(f"   Model: {model}")
         print(f"   Output: {self.output_folder}")
+
+        service = TranscriptionService(model_size=f"{model}")
+
+        try:
+            self.start_button.setText("Transcribing...")
+            self.start_button.setEnabled(False)
+
+            result = service.transcribe_video(
+                video_path=self.selected_file, output_dir=self.output_folder
+            )
+
+            print(f"Done! Saved to {result['output_file']}")
+            print(
+                f"Processed {result['word_count']} words in {result['processing_time']:.2f} seconds"
+            )
+
+            # Update UI
+            self.start_button.setText("Transcription Complete!")
+
+        except Exception as e:
+            print(f"Error: {e}")
+            self.start_button.setText("Error - Try Again")
+
+        finally:
+            service.cleanup()
+            self.start_button.setEnabled(True)
 
 
 app = QApplication(sys.argv)
