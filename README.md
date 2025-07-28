@@ -1,14 +1,14 @@
 # MY Audio Transcription Service
 
-**AS A STUDENT WITH GOLDFISH MEMORY WHO HAS TO ATTEND MANY MEETINGS, I WANT  TO HOST/MAKE MY OWN INSTANCE OF AN AUDIO TRANSCRIPTION SERVICE, SO I DON'T HAVE TO PAY.**
+**AS A STUDENT WITH GOLDFISH MEMORY WHO HAS TO ATTEND MANY MEETINGS, I WANT TO MAKE MY OWN INSTANCE OF AN AUDIO TRANSCRIPTION SERVICE, SO I DON'T HAVE TO PAY.**
 
 Simple GUI for converting speech in video/audio files to text transcripts.
 Everything runs locally so you don't have to pay or worry about upload limits.
 
 Using
-- WhisperX - Fast AI transcription with word-level timestamps
-- PySide6 - Cross-platform GUI framework
-- FFmpeg - Audio/video processing
+- WhisperX - automatic speech recognition (ASR) system. Feature-rich and faster Whisper but using less memory
+- PySide6 - Python GUI framework using Qt toolkit
+- FFmpeg - Audio/video conversion
 
 ## Quick Start
 
