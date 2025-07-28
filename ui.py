@@ -1,7 +1,7 @@
 import os
 import sys
 
-from PySide6.QtCore import QSize, Qt, QThread, Signal
+from PySide6.QtCore import QSize, Qt, QThread, Signal, QTimer
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -28,12 +28,21 @@ class TranscriptionWorker(QThread):
         self.file_path = file_path
         self.output_folder = output_folder
         self.model_size = model_size
+        self._stop_requested = False
+
+    def stop(self):
+        """Request the worker to stop"""
+        self._stop_requested = True
 
     def run(self):
         # This method runs in the background thread
         try:
+            if self._stop_requested:
+                return
 
             def progress_callback(message, percent):
+                if self._stop_requested:
+                    raise Exception("Operation cancelled by user")
                 self.progress_updated.emit(f"{percent}% - {message}")
 
             service = TranscriptionService(model_size=self.model_size)
@@ -44,10 +53,13 @@ class TranscriptionWorker(QThread):
                 progress_callback=progress_callback,
             )
 
-            self.transcription_finished.emit(result)
-
+            if not self._stop_requested:
+                self.transcription_finished.emit(result)
         except Exception as e:
-            self.transcription_failed.emit(str(e))
+            if "cancelled by user" in str(e):
+                self.transcription_failed.emit("Operation cancelled")
+            else:
+                self.transcription_failed.emit(str(e))
         finally:
             if 'service' in locals():
                 service.cleanup()
@@ -242,6 +254,10 @@ class MainWindow(QMainWindow):
             print(f"Output folder: {folder}")
 
     def start_transcription(self):
+        if hasattr(self, 'worker') and self.worker.isRunning():
+            self.stop_transcription()
+            return
+
         if not self.selected_file:
             print("Please select a video/audio file first.")
             return
@@ -257,9 +273,8 @@ class MainWindow(QMainWindow):
         print(f"   Model: {model}")
         print(f"   Output: {self.output_folder}")
 
-        # Update UI for start
-        self.start_button.setText("Transcribing...")
-        self.start_button.setEnabled(False)
+        # Update UI
+        self.start_button.setText("Click to Stop Transcription")
 
         # Create and start worker thread
         self.worker = TranscriptionWorker(self.selected_file, self.output_folder, model)
@@ -272,6 +287,22 @@ class MainWindow(QMainWindow):
         # Start the background work
         self.worker.start()
 
+    def stop_transcription(self):
+        """Stop the current transcription"""
+        if hasattr(self, 'worker') and self.worker.isRunning():
+            print("Stopping transcription...")
+            self.worker.stop()
+            self.start_button.setText("Stopping...")
+            self.start_button.setEnabled(False)
+
+            # Wait a moment for cleanup, then reset
+            QTimer.singleShot(2000, self.reset_ui)
+
+    def reset_ui(self):
+        """Reset UI to initial state"""
+        self.start_button.setText("Start Transcription")
+        self.start_button.setEnabled(True)
+
     def on_progress_update(self, message):
         print(f"{message}")
 
@@ -281,14 +312,12 @@ class MainWindow(QMainWindow):
             f"Processed {result['word_count']} words in {result['processing_time']:.2f} seconds"
         )
 
-        self.start_button.setText("Transcription Complete!")
-        self.start_button.setEnabled(True)
+        self.reset_ui()
 
     def on_transcription_error(self, error_message):
         print(f"Error: {error_message}")
 
-        self.start_button.setText("Error - Try Again")
-        self.start_button.setEnabled(True)
+        self.reset_ui()
 
 
 app = QApplication(sys.argv)
